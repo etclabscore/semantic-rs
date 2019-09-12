@@ -166,6 +166,7 @@ jobs:
 
   test-windows:
     <<: *defaults
+    resource_class: medium+
     docker:
       - image: mersinvald/rust-mingw-docker
     steps:
@@ -177,6 +178,7 @@ jobs:
 
   build-windows:
     <<: *defaults
+    resource_class: medium+
     docker:
       - image: mersinvald/rust-mingw-docker
     steps:
