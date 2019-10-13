@@ -65,14 +65,14 @@ impl Default for Config {
     }
 }
 
-fn globs_to_assets<'a>(globs: impl Iterator<Item = &'a str>) -> Vec<Result<Asset, failure::Error>> {
-    let mut results = Vec::new();
+fn globs_to_assets<'a>(globs: impl Iterator<Item = &'a str>) -> (Vec<Asset>, Vec<Error>) {
+    let (mut assets, mut errors) = (Vec::new(), Vec::new());
 
     for pattern in globs {
         let paths = match glob::glob(pattern) {
             Ok(paths) => paths,
             Err(err) => {
-                results.push(Err(err.into()));
+                errors.push(err.into());
                 continue;
             }
         };
@@ -81,17 +81,19 @@ fn globs_to_assets<'a>(globs: impl Iterator<Item = &'a str>) -> Vec<Result<Asset
             let path = match path {
                 Ok(path) => path,
                 Err(err) => {
-                    results.push(Err(err.into()));
+                    errors.push(err.into());
                     continue;
                 }
             };
 
-            let asset_result = Asset::from_path(path);
-            results.push(asset_result);
+            match Asset::from_path(path) {
+                Ok(asset) => assets.push(asset),
+                Err(e) => errors.push(e),
+            }
         }
     }
 
-    results
+    (assets, errors)
 }
 
 impl PluginInterface for GithubPlugin {
@@ -127,15 +129,11 @@ impl PluginInterface for GithubPlugin {
         let config = &self.config;
 
         // Try to parse assets
-        let errors = globs_to_assets(config.assets.as_value().iter().map(String::as_str))
-            .into_iter()
-            .inspect(|asset| {
-                if let Ok(asset) = asset {
-                    log::info!("Would upload {} ({})", asset.path().display(), asset.content_type());
-                }
-            })
-            .flat_map(Result::err)
-            .collect::<Vec<_>>();
+        let (assets, errors) = globs_to_assets(config.assets.as_value().iter().map(String::as_str));
+        
+        for asset in &assets {
+            log::info!("Would upload {} ({})", asset.path().display(), asset.content_type());
+        }
 
         if errors.is_empty() {
             response.body(())
@@ -188,9 +186,10 @@ impl PluginInterface for GithubPlugin {
 
         let mut errored = false;
 
-        let assets = globs_to_assets(cfg.assets.as_value().iter().map(String::as_str))
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()?;
+        let (assets, errors) = globs_to_assets(cfg.assets.as_value().iter().map(String::as_str));
+        if !errors.is_empty() {
+            return PluginResponse::from_error(errors.swap_remove(0));
+        }
 
         let endpoint_template = format!(
             "https://uploads.github.com/repos/{}/{}/releases/{}/assets?name=",
