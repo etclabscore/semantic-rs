@@ -1,6 +1,6 @@
-use crate::plugin_support::{Plugin, PluginStep};
+use crate::plugin_support::{Plugin, PluginInterface, PluginStep};
 
 pub fn discover(plugin: &Plugin) -> Result<Vec<PluginStep>, failure::Error> {
-    let response = plugin.as_interface().methods()?;
+    let response = plugin.methods()?;
     Ok(response)
 }

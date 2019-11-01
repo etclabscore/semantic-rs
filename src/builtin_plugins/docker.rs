@@ -87,6 +87,11 @@ impl PluginInterface for DockerPlugin {
         PluginResponse::from_ok(serde_json::to_value(&self.config)?)
     }
 
+    fn reset(&mut self) -> response::Null {
+        *self = Self::default();
+        PluginResponse::from_ok(())
+    }
+
     fn set_config(&mut self, config: serde_json::Value) -> response::Null {
         self.config = serde_json::from_value(config)?;
         PluginResponse::from_ok(())

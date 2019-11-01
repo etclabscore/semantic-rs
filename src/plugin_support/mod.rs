@@ -6,8 +6,13 @@ pub mod traits;
 
 pub use self::traits::PluginInterface;
 
+use crate::logger;
+use crate::plugin_support::flow::Value;
+use crate::plugin_support::proto::response;
 use serde::{Deserialize, Serialize};
-use std::cell::{RefCell, RefMut};
+use std::cell::{Ref, RefCell, RefMut};
+use std::convert::TryFrom;
+use std::rc::Rc;
 use strum::IntoEnumIterator;
 
 pub struct RawPlugin {
@@ -38,23 +43,108 @@ pub enum RawPluginState {
     Resolved(ResolvedPlugin),
 }
 
+#[derive(Clone)]
 pub struct Plugin {
     pub name: String,
-    call: RefCell<Box<dyn PluginInterface>>,
+    inner: Rc<RefCell<Box<dyn PluginInterface>>>,
 }
 
-impl Plugin {
-    pub fn new(plugin: Box<dyn PluginInterface>) -> Result<Self, failure::Error> {
-        let name = plugin.name()?;
+impl TryFrom<Box<dyn PluginInterface>> for Plugin {
+    type Error = failure::Error;
+
+    fn try_from(inner: Box<dyn PluginInterface>) -> Result<Self, Self::Error> {
+        let name = inner.name()?;
         let plugin = Plugin {
             name,
-            call: RefCell::new(plugin),
+            inner: Rc::new(RefCell::new(inner)),
         };
         Ok(plugin)
     }
+}
 
-    pub fn as_interface(&self) -> RefMut<Box<dyn PluginInterface>> {
-        RefCell::borrow_mut(&self.call)
+impl Plugin {
+    pub fn new<T: PluginInterface + 'static>(plugin: T) -> Result<Self, failure::Error> {
+        Plugin::try_from(Box::new(plugin) as Box<dyn PluginInterface>)
+    }
+
+    fn apply<R>(&self, func: impl FnOnce(Ref<Box<dyn PluginInterface>>) -> R) -> R {
+        let _span = logger::span(&self.name);
+        func(self.inner.borrow())
+    }
+
+    fn apply_mut<R>(&mut self, func: impl FnOnce(RefMut<Box<dyn PluginInterface>>) -> R) -> R {
+        let _span = logger::span(&self.name);
+        func(self.inner.borrow_mut())
+    }
+}
+
+impl PluginInterface for Plugin {
+    fn name(&self) -> response::Name {
+        self.apply(|x| x.name())
+    }
+
+    fn provision_capabilities(&self) -> response::ProvisionCapabilities {
+        self.apply(|x| x.provision_capabilities())
+    }
+
+    fn get_value(&self, key: &str) -> response::GetValue {
+        self.apply(|x| x.get_value(key))
+    }
+
+    fn set_value(&mut self, key: &str, value: Value<serde_json::Value>) -> response::Null {
+        self.apply_mut(|mut x| x.set_value(key, value))
+    }
+
+    fn get_config(&self) -> response::Config {
+        self.apply(|x| x.get_config())
+    }
+
+    fn set_config(&mut self, config: serde_json::Value) -> response::Null {
+        self.apply_mut(|mut x| x.set_config(config))
+    }
+
+    fn reset(&mut self) -> response::Null {
+        self.apply_mut(|mut x| x.reset())
+    }
+
+    fn methods(&self) -> response::Methods {
+        self.apply(|x| x.methods())
+    }
+
+    fn pre_flight(&mut self) -> response::Null {
+        self.apply_mut(|mut x| x.pre_flight())
+    }
+
+    fn get_last_release(&mut self) -> response::Null {
+        self.apply_mut(|mut x| x.get_last_release())
+    }
+
+    fn derive_next_version(&mut self) -> response::Null {
+        self.apply_mut(|mut x| x.derive_next_version())
+    }
+
+    fn generate_notes(&mut self) -> response::Null {
+        self.apply_mut(|mut x| x.generate_notes())
+    }
+
+    fn prepare(&mut self) -> response::Null {
+        self.apply_mut(|mut x| x.prepare())
+    }
+
+    fn verify_release(&mut self) -> response::Null {
+        self.apply_mut(|mut x| x.verify_release())
+    }
+
+    fn commit(&mut self) -> response::Null {
+        self.apply_mut(|mut x| x.commit())
+    }
+
+    fn publish(&mut self) -> response::Null {
+        self.apply_mut(|mut x| x.publish())
+    }
+
+    fn notify(&self) -> response::Null {
+        self.apply(|x| x.notify())
     }
 }
 

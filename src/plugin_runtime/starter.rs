@@ -1,4 +1,5 @@
 use crate::plugin_support::{Plugin, RawPlugin, RawPluginState, ResolvedPlugin};
+use std::convert::TryFrom;
 
 pub struct PluginStarter {}
 
@@ -14,7 +15,7 @@ impl PluginStarter {
         let started = match state {
             RawPluginState::Unresolved(_) => panic!("all plugins must be resolved before calling Starter::start"),
             RawPluginState::Resolved(resolved) => match resolved {
-                ResolvedPlugin::Builtin(builtin) => Plugin::new(builtin)?,
+                ResolvedPlugin::Builtin(builtin) => Plugin::try_from(builtin)?,
             },
         };
         Ok(started)

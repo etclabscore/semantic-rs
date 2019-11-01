@@ -16,7 +16,7 @@ mod utils;
 use crate::builtin_plugins::{early_exit, EarlyExitPlugin};
 use crate::config::Config;
 use crate::plugin_runtime::kernel::InjectionTarget;
-use crate::plugin_support::PluginStep;
+use crate::plugin_support::{Plugin, PluginStep};
 use plugin_runtime::Kernel;
 use std::env;
 
@@ -58,7 +58,7 @@ fn run() -> Result<(), failure::Error> {
 
     let kernel = Kernel::builder(config)
         .inject_plugin(
-            EarlyExitPlugin::new(),
+            Plugin::new(EarlyExitPlugin::new())?,
             InjectionTarget::AfterStep(PluginStep::DeriveNextVersion),
         )
         .build()?;

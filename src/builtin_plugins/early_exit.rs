@@ -10,15 +10,14 @@ use crate::plugin_support::proto::{
 };
 use crate::plugin_support::{PluginInterface, PluginStep};
 
+#[derive(Default)]
 pub struct EarlyExitPlugin {
     config: Config,
 }
 
 impl EarlyExitPlugin {
     pub fn new() -> Self {
-        EarlyExitPlugin {
-            config: Config::default(),
-        }
+        Self::default()
     }
 }
 
@@ -52,6 +51,11 @@ impl PluginInterface for EarlyExitPlugin {
 
     fn set_config(&mut self, config: serde_json::Value) -> response::Null {
         self.config = serde_json::from_value(config)?;
+        PluginResponse::from_ok(())
+    }
+
+    fn reset(&mut self) -> response::Null {
+        *self = Self::default();
         PluginResponse::from_ok(())
     }
 

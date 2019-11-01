@@ -11,3 +11,5 @@ pub struct Version {
     pub rev: GitRevision,
     pub semver: Option<semver::Version>,
 }
+
+pub type ProjectTrees = Vec<String>;

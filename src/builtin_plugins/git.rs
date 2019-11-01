@@ -14,9 +14,16 @@ use crate::plugin_support::proto::{GitRevision, Version};
 use crate::plugin_support::{PluginInterface, PluginStep};
 use std::path::Path;
 
+#[derive(Default)]
 pub struct GitPlugin {
     config: Config,
     state: Option<State>,
+}
+
+impl GitPlugin {
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 struct State {
@@ -294,15 +301,6 @@ impl State {
     }
 }
 
-impl GitPlugin {
-    pub fn new() -> Self {
-        GitPlugin {
-            config: Config::default(),
-            state: None,
-        }
-    }
-}
-
 impl PluginInterface for GitPlugin {
     fn name(&self) -> response::Name {
         PluginResponse::from_ok("git".into())
@@ -365,6 +363,11 @@ impl PluginInterface for GitPlugin {
 
     fn set_config(&mut self, config: serde_json::Value) -> response::Null {
         self.config = serde_json::from_value(config)?;
+        PluginResponse::from_ok(())
+    }
+
+    fn reset(&mut self) -> response::Null {
+        *self = Self::default();
         PluginResponse::from_ok(())
     }
 

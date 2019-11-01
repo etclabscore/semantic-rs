@@ -33,6 +33,7 @@ pest = '2.1.1'
 pest_derive = '2.1.0'
 lazy_static = '1.4.0'
 subprocess = '0.1.18'
+walkdir = "2.2.9"
 
 [dependencies.semver]
 version = '0.9'
@@ -53,3 +54,7 @@ features = ['serde_impl']
 debug = true
 overflow-checks = true
 debug-assertions = true
+
+[dev-dependencies]
+tempfile = "3.1.0"
+symlink = "0.1.0"
